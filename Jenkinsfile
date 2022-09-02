@@ -11,7 +11,7 @@ pipeline {
                 cleanWs()
                 // We need to explicitly checkout from SCM here
                 checkout scm
-                echo "Building ${env.JOB_NAME}..." > file01
+                echo "Building ${env.JOB_NAME}..."
           
             }
         }
