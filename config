@@ -1,0 +1,70 @@
+#!/usr/bin/env bash 
+set -o xtrace 
+ 
+TARGET=protected-controlroom.93e955c.play.game.2kcoretech.online:443 
+CLUSTER=buildup 
+REVISION= 
+GAME=buildup 
+AUTH_APPID='a2f45eb3880c474dbd28abc1fd16810e' 
+APPIDS='a2f45eb3880c474dbd28abc1fd16810e 2b618f36baa5440586e3cfdc3bf6be51 28b7c2428b1240d0a10ce6b8eecb59fe 7b5d2a0bf12c48e8aa3110e1ecad3a54 5fe6d9bba90147f692a51b9e313ec267 dfcfb5abce63464d990d9610a9509d43' 
+MODE="everybody" 
+ 
+ 
+for i in "$@" 
+do 
+case $i in 
+    -t=*|--target=*) 
+    TARGET="${i#*=}" 
+    shift # past argument=value 
+    ;; 
+    -c=*|--cluster=*) 
+    CLUSTER="${i#*=}" 
+    shift # past argument=value 
+    ;; 
+    *) 
+          # unknown option 
+    ;; 
+esac 
+done 
+ 
+if [[ -z $CLUSTER ]] 
+then 
+    echo "no value for argument --cluster given" 
+    exit 1 
+fi 
+ 
+if [[ -z $TARGET ]] 
+then 
+    echo "no value for argument --target given" 
+    exit 1 
+fi 
+ 
+echo "Creating game: ${GAME}" 
+homer game create --name="${GAME}" -t "${TARGET}" -a "${AUTH_APPID}" 
+if [ $? -ne 0 ]; then 
+    echo "error while creating ${GAME} game" 
+    exit 1 
+fi 
+ 
+echo "Creating game revision for app IDs: ${APPIDS}" 
+homer game revision create --name "${GAME}" --app "${APPIDS}" --type="${MODE}" -t "${TARGET}" -a "${AUTH_APPID}" 
+if [ $? -ne 0 ]; then 
+    echo "error while creating ${GAME} game config revision" 
+    exit 1 
+fi 
+ 
+# use the output of this to get the revision we created 
+REVISION=$(homer game list -t "${TARGET}" -a "${AUTH_APPID}" --json 2>/dev/null | grep -v "Using config" | jq '.games | map(select(.name == "'${GAME}'")) | .[] | .revisions | .[] | .id') 
+if [ $? -ne 0 ]; then 
+    echo "error while checking ${GAME} game revision" 
+fi 
+ 
+if [[ -z $REVISION ]] 
+then 
+    echo "no revisions found for game ${GAME}" 
+    exit 1 
+fi 
+ 
+echo "Creating fleet with revision: ${REVISION}"  
+homer fleet create --cluster="${CLUSTER}" --game="${GAME}" --revision="${REVISION}" -t "${TARGET}" -a "${AUTH_APPID}"  
+homer fleet list --cluster="${CLUSTER}" -t "${TARGET}" -a "${AUTH_APPID}"
